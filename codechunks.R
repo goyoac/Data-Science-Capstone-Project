@@ -1,14 +1,76 @@
+#' ---
+#' title: "Johns Hopkins Data Science Casptone Project - Milestone Report"
+#' author: "Gregorio Ambrosio Cestero"
+#' date: "June 4, 2016"
+#' ---
+#' 
+#' Last updated: `r Sys.time()`
+#' 
+#+ setup, include=FALSE
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache = TRUE)
+
+#' ## Introduction 
+#' Natural language processing (NLP) is a field of computer
+#' science, artificial intelligence, and computational linguistics concerned with
+#' the interactions between computers and human (natural) languages. As such, NLP
+#' is related to the area of human–computer interaction. Many challenges in NLP
+#' involve: natural language understanding, enabling computers to derive meaning
+#' from human or natural language input; and others involve natural language
+#' generation.
+#' 
+#' Around the world, people are spending an increasing amount of time on their
+#' mobile devices for email, social networking, banking and a whole range of
+#' other activities. But typing on mobile devices can be a serious pain. SwiftKey
+#' company builds a smart keyboard that makes it easier for people to type on
+#' their mobile devices. One cornerstone of their smart keyboard is predictive
+#' text models.
+#' 
+#' This report is part of the Coursera John Hopkins Data Science Capstone
+#' Project. The course starts with the basics, analyzing a large corpus of text
+#' documents to discover the structure in the data and how words are put
+#' together. It covers cleaning and analyzing text data, then building and
+#' sampling from a predictive text model. Finally, a predictive text product will
+#' be built.
+#' 
+#' This milestone report provides a first stage in the project providing data
+#' acquisition and cleaning, and exploratory analysis of the course data set.
+#' 
+#' ## Executive summary
+#' 
+#' Exploratory Data Analysis techniques are typically applied before formal
+#' modeling commences and can help inform the development of more complex
+#' statistical models. Exploratory techniques are also important for eliminating
+#' or sharpening potential hypotheses about the world that can be addressed by
+#' the data. To get started Coursera Swiftkey Dataset is downloaded and then some
+#' statistics are collected. Since the size of the data set is very big it is
+#' randomly sampled to a reduced data set to address the analysis. This sample
+#' data set is preprocessed and tokenized for extracting contiguous sequence of
+#' items. Concretely unigrams, bigrams and trigrams are extracted. Finally, word
+#' clouds for n-grams are showed.
+#' 
+#' ## Loading data set
+#' 
+#' The data set comes from [HC Corpora](http://www.corpora.heliohost.org) and is
+#' composed of four language corpus: en_US, de_DE, ru_RU and fi_FI.  See the
+#' [readme file](http://www.corpora.heliohost.org/aboutcorpus.html) for details
+#' on the corpora available. The files have been language filtered but may still
+#' contain some foreign text. In this report the english one in chosen to be
+#' analyzed.
+#' 
+
+#' Setting working directory
+#+ Setting working directory, ----------------------------------------------------------------------
 setwd("~/workspace/coursera/Johns Hopkins Data Science/10 Capstone Project/Data-Science-Capstone-Project")
 
-### Loading needed packages
+#' Loading needed packages
+#+ Loading needed packages, ----------------------------------------------------------------------
 # p_load = install.packages + library
-
-
 if (!require("pacman")) install.packages("pacman", dependencies=TRUE)
 pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, SnowballC, wordcloud, Rgraphviz)
 
-### Loading Dataset
-
+#' Loading Dataset
+#+ Loading Dataset, ----------------------------------------------------------------------
 destFile <- "Coursera-SwiftKey.zip"
 fileURL <- paste("http://d396qusza40orc.cloudfront.net/dsscapstone/dataset/", destFile, sep="")
 if (!file.exists(destFile)) download.file(fileURL ,destFile)    
@@ -24,17 +86,22 @@ corpora.files      <- file.path(corpora.path, list.files(corpora.path))
 corpora.samplePath <- "sample"
 if (!file.exists(corpora.samplePath)) dir.create(corpora.samplePath)
 
+#' Files sizes are extracted in megabytes
+#+ File size, ----------------------------------------------------------------------
 ### File size
 list.files(corpora.path)
 file.info(corpora.files)$size / 1024^2
 
+#' Now files are read. As the corpus is composed of three files, a list is used to store them
+#+ Reading data alternative, echo = FALSE, ----------------------------------------------------------------------
 ### Reading data
 #blogs   <- readLines(corpora.files[1], encoding="UTF-8", skipNul = TRUE)
 #news    <- readLines(corpora.files[2], encoding="UTF-8", skipNul = TRUE)
 #twitter <- readLines(corpora.files[3], encoding="UTF-8", skipNul = TRUE)
 
+#+ Reading data, ----------------------------------------------------------------------
 corpora.data <- vector("list",3)
-names(corpora.data) <- corpora.fileNames
+names(corpora.data) <- basename(corpora.files)
 
 con <- file(corpora.files[1], open="rb")
 corpora.data[[1]] <- readLines(con, encoding="UTF-8", skipNul = TRUE)
@@ -50,9 +117,16 @@ close(con)
 
 rm(con)
 
-# save the data to a .RData file
+#+ save the data to a .RData file, echo = FALSE, ----------------------------------------------------------------------
 #save (corpora.data, file="corpora.data.Rdata")
 
+#' ## Getting some statistics
+#'
+#' To have an idea of how the data set looks like, some statistics are
+#' extracted. Pure R can be used for that but, in this case, stringi package is
+#' used for simplicity and not reinvent the wheel.
+
+#+ Calculating statistics, ----------------------------------------------------------------------
 ### Statistics
 # Number of lines
 # Number of non-empty lines
@@ -67,6 +141,13 @@ corpora.stats <- data.frame(t(rbind(sapply(corpora.data,stri_stats_general),
 colnames(corpora.stats)[5] <- "Words"
 print(corpora.stats)
 
+#' ## Sampling data
+#' 
+#' This dataset is fairly large. A smaller subset of the data is used by reading
+#' in a random subset of the original data and writing it out to a separate
+#' file.
+#' 
+#+ Sampling data, ----------------------------------------------------------------------
 ### Sampling data
 set.seed(1000)
 
@@ -79,14 +160,26 @@ corpora.sample[[3]] <- corpora.data[[3]][sample(1:length(corpora.data[[3]]),1000
 
 writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), file.path(corpora.samplePath,"sampleCorpus.txt"))
 
-### Text mining
+#' ## Text mining
+#' 
+#' Analyzing the text data refers to the process of deriving high-quality
+#' information from text. This task is referred as text mining. The best way to
+#' do text mining in r is using tm package that provides a text mining
+#' framework. The main structure for managing documents in tm is a so-called
+#' Corpus, representing a collection of text documents. Once loaded, a
+#' preprocessing is done removing punctuation, numbers, stopwords, urls,
+#' non-needed characters, common word endings in english and unnecesary
+#' whitespaces
+#' 
 
-# Loading complete corpora
+
+#+ Loading complete corpora, echo = FALSE, ----------------------------------------------------------------------
 #corpora.tmCorpus <- Corpus(DirSource(file.path(".", corpora.path)))
 
+#+ Loading sample corpora, ----------------------------------------------------------------------
+### Text mining
 # Loading sample corpora
 corpora.tmCorpus <- Corpus(DirSource(file.path(".", corpora.samplePath)))
-
 
 # Removing punctuation
 corpora.tmCorpus <- tm_map(corpora.tmCorpus, removePunctuation)
@@ -118,10 +211,15 @@ corpora.tmCorpus  <- tm_map(corpora.tmCorpus, stripWhitespace)
 # Telling R to treat your preprocessed documents as text documents
 corpora.tmCorpus <- tm_map(corpora.tmCorpus, PlainTextDocument)
 
-### Exploratory analysis
-
-### Tokenization
-
+#' ## Tokenization
+#' 
+#' Now is time to exploratory analysis through the understanding of the
+#' distribution of words and relationship between the words in the corpora.
+#' Sample data set is tokenized for extracting contiguous sequence of items.
+#' Concretely unigrams, bigrams and trigrams are extracted and their frequencies
+#' are obtained and plotted.
+#' 
+#+ Tokenization, ----------------------------------------------------------------------
 unigram.tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
 bigram.tokenizer  <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
 trigram.tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
@@ -138,6 +236,9 @@ unigrams.frequency.df <- data.frame(word = names(unigrams.frequency), frequency 
 bigrams.frequency.df  <- data.frame(word = names(bigrams.frequency), frequency = bigrams.frequency)
 trigrams.frequency.df <- data.frame(word = names(trigrams.frequency), frequency = trigrams.frequency)
 
+#' ## Plotting n-grams
+#' 
+#+ r Plotting n-grams, ----------------------------------------------------------------------
 ggplot(unigrams.frequency.df, aes(reorder(word,frequency), frequency)) + 
         geom_bar(stat = "identity") + 
         xlab("Unigrams") + 
@@ -156,10 +257,10 @@ ggplot(trigrams.frequency.df, aes(reorder(word,frequency), frequency)) +
         ylab("Frequency") +
         coord_flip()
 
-### Word cloud
+#' ## Word cloud
+#' A more human way of frequencies observation is through word clouds. The wordcloud package is user to plot n-grams in a cloudy way
 
-par(mfrow = c(1,3))
-
+#+ Word cloud, warning = FALSE, ----------------------------------------------------------------------
 wordcloud(words = names(unigrams.frequency), freq = unigrams.frequency, min.freq = 3,
           scale=c(3, .25),
           #colors=brewer.pal(9, "YlOrRd"),
@@ -178,5 +279,14 @@ wordcloud(words = names(trigrams.frequency), freq = trigrams.frequency, min.freq
           rot.per=0.35,
           random.order = F)
 
-
+#' ## Next step
+#' 
+#' To continue the project n-grams will be used to probabilities calculation.
+#' Next steps include a n-gram probabilistic based model to next word prediction
+#' based on the previous 1, 2 or 3 words. Finally the predcition model will be
+#' used trough a shiny app as the goal of the project is defined.
+#' 
+#' ## Session info
+#+ show sessionInfo
+sessionInfo()
 
