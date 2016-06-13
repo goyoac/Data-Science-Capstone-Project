@@ -27,36 +27,36 @@ To get started Coursera Swiftkey Dataset is downloaded and then some statistics 
 
 The data set comes from [HC Corpora](http://www.corpora.heliohost.org) and is composed of four language corpus: en_US, de_DE, ru_RU and fi_FI.  See the [readme file](http://www.corpora.heliohost.org/aboutcorpus.html) for details on the corpora available. The files have been language filtered but may still contain some foreign text. In this report the english one in chosen to be analyzed.
 
-```{r}
+```{r Loading needed packages}
 ### Loading needed packages
 # p_load = install.packages + library
 
 if (!require("pacman")) install.packages("pacman", dependencies=TRUE)
-pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, wordcloud, Rgraphviz)
+pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, SnowballC, wordcloud, Rgraphviz)
 ```
 
-```{r}
+```{r Loading Dataset}
 ### Loading Dataset
 
 destFile <- "Coursera-SwiftKey.zip"
 fileURL <- paste("http://d396qusza40orc.cloudfront.net/dsscapstone/dataset/", destFile, sep="")
-
-# To avoid long download we check if the file is alreeady downloaded
 if (!file.exists(destFile)) download.file(fileURL ,destFile)    
 
-# Setting paths
-corpora.path       <- "final/en_US/"
-corpora.samplePath <- "sample/"
-corpora.fileNames  <- list.files(corpora.path)
-corpora.files      <- paste(corpora.path, corpora.fileNames, sep="") 
+# Unzziping and setting directories
 
 # Checking if it was previously unzipped
-if (!all(file.exists(corpora.files))) unzip(destFile, list = TRUE ) 
+corpora.path       <- "final/en_US"
+if (!(file.exists(corpora.path))) unzip(destFile) 
+corpora.files      <- file.path(corpora.path, list.files(corpora.path)) 
+
+# Creating sample directory 
+corpora.samplePath <- "sample"
+if (!file.exists(corpora.samplePath)) dir.create(corpora.samplePath)
 ```
 
 Files sizes are extracted in megabytes
 
-```{r}
+```{r File size}
 ### File size
 list.files(corpora.path)
 file.info(corpora.files)$size / 1024^2
@@ -64,10 +64,10 @@ file.info(corpora.files)$size / 1024^2
 
 Now files are read. As the corpus is composed of three files, a list is used to store them
 
-```{r}
+```{r Reading data}
 ### Reading data
 corpora.data <- vector("list",3)
-names(corpora.data) <- corpora.fileNames
+names(corpora.data) <- basename(corpora.files)
 
 con <- file(corpora.files[1], open="rb")
 corpora.data[[1]] <- readLines(con, encoding="UTF-8", skipNul = TRUE)
@@ -89,7 +89,7 @@ rm(con)
 
 To have an idea of how the data set looks like, some statistics are extracted. Pure R can be used for that but, in this case, stringi package is used for simplicity and not reinvent the wheel. 
 
-```{r}
+```{r Calculating statistics}
 # Number of lines
 # Number of non-empty lines
 # Number of characters
@@ -104,22 +104,24 @@ colnames(corpora.stats)[5] <- "Words"
 print(corpora.stats)
 ```
 
+
 ## Sampling data
 
 This dataset is fairly large. A smaller subset of the data is used by reading in a random subset of the original data and writing it out to a separate file.
 
-```{r}
+```{r Sampling data}
 ### Sampling data
 set.seed(1000)
 
 corpora.sample <- vector("list",3)
-names(corpora.sample) <- corpora.fileNames
+names(corpora.sample) <- basename(corpora.files)
 
 corpora.sample[[1]] <- corpora.data[[1]][sample(1:length(corpora.data[[1]]),10000)]
 corpora.sample[[2]] <- corpora.data[[2]][sample(1:length(corpora.data[[2]]),10000)]
 corpora.sample[[3]] <- corpora.data[[3]][sample(1:length(corpora.data[[3]]),10000)]
 
-writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), paste(corpora.samplePath,"sampleCorpus.txt"))
+writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), file.path(corpora.samplePath,"sampleCorpus.txt"))
+
 ```
 
 ## Text mining
@@ -127,7 +129,7 @@ writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), paste(corpora
 Analyzing the text data refers to the process of deriving high-quality information from text. This task is referred as text mining. The best way to do text mining in r is using tm package that provides a text mining framework. 
 The main structure for managing documents in tm is a so-called Corpus, representing a collection of text documents. Once loaded, a preprocessing is done removing punctuation, numbers, stopwords, urls, non-needed characters, common word endings in english and unnecesary whitespaces
 
-```{r}
+```{r Loading sample corpora}
 # Loading sample corpora
 corpora.tmCorpus <- Corpus(DirSource(file.path(".", corpora.samplePath)))
 
@@ -169,7 +171,7 @@ corpora.tmCorpus <- tm_map(corpora.tmCorpus, PlainTextDocument)
 
 Now is time to exploratory analysis through the understanding of the distribution of words and relationship between the words in the corpora. Sample data set is tokenized for extracting contiguous sequence of items. Concretely unigrams, bigrams and trigrams are extracted and their frequencies are obtained and plotted. 
 
-```{r}
+```{r Tokenization}
 unigram.tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
 bigram.tokenizer  <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
 trigram.tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
@@ -187,7 +189,7 @@ bigrams.frequency.df  <- data.frame(word = names(bigrams.frequency), frequency =
 trigrams.frequency.df <- data.frame(word = names(trigrams.frequency), frequency = trigrams.frequency)
 ```
 
-```{r}
+```{r Plotting n-grams}
 ggplot(unigrams.frequency.df, aes(reorder(word,frequency), frequency)) + 
         geom_bar(stat = "identity") + 
         xlab("Unigrams") + 
@@ -210,9 +212,9 @@ ggplot(trigrams.frequency.df, aes(reorder(word,frequency), frequency)) +
 
 ## Word cloud
 
-A more human way of frequencies observation is through word clouds. The wordclud package is user to plot n-grams in a cloudy way
+A more human way of frequencies observation is through word clouds. The wordcloud package is user to plot n-grams in a cloudy way
 
-```{r}
+```{r Word cloud}
 wordcloud(words = names(unigrams.frequency), freq = unigrams.frequency, min.freq = 500,
           scale=c(2.5, .25),
           rot.per=0.50,

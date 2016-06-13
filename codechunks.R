@@ -5,8 +5,9 @@ setwd("~/workspace/coursera/Johns Hopkins Data Science/10 Capstone Project/Data-
 ### Loading needed packages
 # p_load = install.packages + library
 
+
 if (!require("pacman")) install.packages("pacman", dependencies=TRUE)
-pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, wordcloud, Rgraphviz)
+pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, SnowballC, wordcloud, Rgraphviz)
 
 ### Loading Dataset
 
@@ -14,12 +15,16 @@ destFile <- "Coursera-SwiftKey.zip"
 fileURL <- paste("http://d396qusza40orc.cloudfront.net/dsscapstone/dataset/", destFile, sep="")
 if (!file.exists(destFile)) download.file(fileURL ,destFile)    
 
-corpora.path       <- "final/en_US/"
-corpora.samplePath <- "sample/"
-corpora.fileNames  <- list.files(corpora.path)
-corpora.files      <- paste(corpora.path, corpora.fileNames, sep="") 
+# Unzziping and setting directories
 
-if (!all(file.exists(corpora.files))) unzip(destFile, list = TRUE ) 
+# Checking if it was previously unzipped
+corpora.path       <- "final/en_US"
+if (!(file.exists(corpora.path))) unzip(destFile) 
+corpora.files      <- file.path(corpora.path, list.files(corpora.path)) 
+
+# Creating sample directory 
+corpora.samplePath <- "sample"
+if (!file.exists(corpora.samplePath)) dir.create(corpora.samplePath)
 
 ### File size
 list.files(corpora.path)
@@ -68,13 +73,13 @@ print(corpora.stats)
 set.seed(1000)
 
 corpora.sample <- vector("list",3)
-names(corpora.sample) <- corpora.fileNames
+names(corpora.sample) <- basename(corpora.files)
 
 corpora.sample[[1]] <- corpora.data[[1]][sample(1:length(corpora.data[[1]]),10000)]
 corpora.sample[[2]] <- corpora.data[[2]][sample(1:length(corpora.data[[2]]),10000)]
 corpora.sample[[3]] <- corpora.data[[3]][sample(1:length(corpora.data[[3]]),10000)]
 
-writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), paste(corpora.samplePath,"sampleCorpus.txt"))
+writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), file.path(corpora.samplePath,"sampleCorpus.txt"))
 
 ### Text mining
 

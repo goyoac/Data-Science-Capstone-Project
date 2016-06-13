@@ -141,23 +141,23 @@ $(document).ready(function () {
 
 if (!require(&quot;pacman&quot;)) install.packages(&quot;pacman&quot;, dependencies=TRUE)</code></pre>
 <pre><code>## Loading required package: pacman</code></pre>
-<pre class="r"><code>pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, wordcloud, Rgraphviz)</code></pre>
+<pre class="r"><code>pacman::p_load(stringi, tm, RWeka, ggplot2, magrittr, SnowballC, wordcloud, Rgraphviz)</code></pre>
 <pre class="r"><code>### Loading Dataset
 
 destFile &lt;- &quot;Coursera-SwiftKey.zip&quot;
 fileURL &lt;- paste(&quot;http://d396qusza40orc.cloudfront.net/dsscapstone/dataset/&quot;, destFile, sep=&quot;&quot;)
-
-# To avoid long download we check if the file is alreeady downloaded
 if (!file.exists(destFile)) download.file(fileURL ,destFile)    
 
-# Setting paths
-corpora.path       &lt;- &quot;final/en_US/&quot;
-corpora.samplePath &lt;- &quot;sample/&quot;
-corpora.fileNames  &lt;- list.files(corpora.path)
-corpora.files      &lt;- paste(corpora.path, corpora.fileNames, sep=&quot;&quot;) 
+# Unzziping and setting directories
 
 # Checking if it was previously unzipped
-if (!all(file.exists(corpora.files))) unzip(destFile, list = TRUE ) </code></pre>
+corpora.path       &lt;- &quot;final/en_US&quot;
+if (!(file.exists(corpora.path))) unzip(destFile) 
+corpora.files      &lt;- file.path(corpora.path, list.files(corpora.path)) 
+
+# Creating sample directory 
+corpora.samplePath &lt;- &quot;sample&quot;
+if (!file.exists(corpora.samplePath)) dir.create(corpora.samplePath)</code></pre>
 <p>Files sizes are extracted in megabytes</p>
 <pre class="r"><code>### File size
 list.files(corpora.path)</code></pre>
@@ -167,7 +167,7 @@ list.files(corpora.path)</code></pre>
 <p>Now files are read. As the corpus is composed of three files, a list is used to store them</p>
 <pre class="r"><code>### Reading data
 corpora.data &lt;- vector(&quot;list&quot;,3)
-names(corpora.data) &lt;- corpora.fileNames
+names(corpora.data) &lt;- basename(corpora.files)
 
 con &lt;- file(corpora.files[1], open=&quot;rb&quot;)
 corpora.data[[1]] &lt;- readLines(con, encoding=&quot;UTF-8&quot;, skipNul = TRUE)
@@ -210,13 +210,13 @@ print(corpora.stats)</code></pre>
 set.seed(1000)
 
 corpora.sample &lt;- vector(&quot;list&quot;,3)
-names(corpora.sample) &lt;- corpora.fileNames
+names(corpora.sample) &lt;- basename(corpora.files)
 
 corpora.sample[[1]] &lt;- corpora.data[[1]][sample(1:length(corpora.data[[1]]),10000)]
 corpora.sample[[2]] &lt;- corpora.data[[2]][sample(1:length(corpora.data[[2]]),10000)]
 corpora.sample[[3]] &lt;- corpora.data[[3]][sample(1:length(corpora.data[[3]]),10000)]
 
-writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), paste(corpora.samplePath,&quot;sampleCorpus.txt&quot;))</code></pre>
+writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), file.path(corpora.samplePath,&quot;sampleCorpus.txt&quot;))</code></pre>
 </div>
 <div id="text-mining" class="section level2">
 <h2>Text mining</h2>
@@ -294,7 +294,7 @@ trigrams.frequency.df &lt;- data.frame(word = names(trigrams.frequency), frequen
 </div>
 <div id="word-cloud" class="section level2">
 <h2>Word cloud</h2>
-<p>A more human way of frequencies observation is through word clouds. The wordclud package is user to plot n-grams in a cloudy way</p>
+<p>A more human way of frequencies observation is through word clouds. The wordcloud package is user to plot n-grams in a cloudy way</p>
 <pre class="r"><code>wordcloud(words = names(unigrams.frequency), freq = unigrams.frequency, min.freq = 500,
           scale=c(2.5, .25),
           rot.per=0.50,
