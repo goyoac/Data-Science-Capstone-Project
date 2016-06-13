@@ -1,5 +1,3 @@
-
-
 setwd("~/workspace/coursera/Johns Hopkins Data Science/10 Capstone Project/Data-Science-Capstone-Project")
 
 ### Loading needed packages
