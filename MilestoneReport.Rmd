@@ -4,6 +4,7 @@ author: "Gregorio Ambrosio Cestero"
 date: "June 4, 2016"
 output: html_document
 ---
+updated: `r Sys.time()`
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -236,6 +237,11 @@ wordcloud(words = names(trigrams.frequency), freq = trigrams.frequency, min.freq
 
 To continue the project n-grams will be used to probabilities calculation. Next steps include a n-gram probabilistic based model to next word prediction based on the previous 1, 2 or 3 words.
 Finally the predcition model will be used trough a shiny app as the goal of the project is defined.
+
+## Session info
+```{r show sessionInfo}
+sessionInfo()
+```
 
 
 
