@@ -57,7 +57,7 @@ knitr::opts_chunk$set(cache = TRUE)
 #' on the corpora available. The files have been language filtered but may still
 #' contain some foreign text. In this report the english one in chosen to be
 #' analyzed.
-#' 
+
 
 #' Setting working directory
 #+ Setting working directory, ----------------------------------------------------------------------
