@@ -135,9 +135,9 @@ rm(con)
 # Number of words
 corpora.stats <- data.frame(t(rbind(sapply(corpora.data,stri_stats_general),
                                     sapply(corpora.data,stri_stats_latex)[4,]
-                                    )
-                              )
-                            )
+)
+)
+)
 colnames(corpora.stats)[5] <- "Words"
 print(corpora.stats)
 
@@ -149,14 +149,23 @@ print(corpora.stats)
 #' 
 #+ Sampling data, ----------------------------------------------------------------------
 ### Sampling data
-set.seed(1000)
+corpora.sample.percentage <- 0.05
 
 corpora.sample <- vector("list",3)
 names(corpora.sample) <- basename(corpora.files)
 
-corpora.sample[[1]] <- corpora.data[[1]][sample(1:length(corpora.data[[1]]),10000)]
-corpora.sample[[2]] <- corpora.data[[2]][sample(1:length(corpora.data[[2]]),10000)]
-corpora.sample[[3]] <- corpora.data[[3]][sample(1:length(corpora.data[[3]]),10000)]
+set.seed(1000)
+corpora.sample[[1]] <- corpora.data[[1]][sample(1:length(corpora.data[[1]]), corpora.stats$Lines[[1]]*corpora.sample.percentage)]
+corpora.sample[[2]] <- corpora.data[[2]][sample(1:length(corpora.data[[2]]), corpora.stats$Lines[[2]]*corpora.sample.percentage)]
+corpora.sample[[3]] <- corpora.data[[3]][sample(1:length(corpora.data[[3]]), corpora.stats$Lines[[3]]*corpora.sample.percentage)]
+
+corpora.sample.stats <- data.frame(t(rbind(sapply(corpora.sample,stri_stats_general),
+                                    sapply(corpora.sample,stri_stats_latex)[4,]
+                                    )
+                              )
+                            )
+colnames(corpora.sample.stats)[5] <- "Words"
+print(corpora.sample.stats)
 
 writeLines(unlist(corpora.sample,recursive=FALSE,use.names=FALSE), file.path(corpora.samplePath,"sampleCorpus.txt"))
 
@@ -211,7 +220,7 @@ corpora.tmCorpus  <- tm_map(corpora.tmCorpus, stripWhitespace)
 # Telling R to treat your preprocessed documents as text documents
 corpora.tmCorpus <- tm_map(corpora.tmCorpus, PlainTextDocument)
 
-#' ## Tokenization
+#' ## Exploratory analysis
 #' 
 #' Now is time to exploratory analysis through the understanding of the
 #' distribution of words and relationship between the words in the corpora.
@@ -219,7 +228,7 @@ corpora.tmCorpus <- tm_map(corpora.tmCorpus, PlainTextDocument)
 #' Concretely unigrams, bigrams and trigrams are extracted and their frequencies
 #' are obtained and plotted.
 #' 
-#+ Tokenization, ----------------------------------------------------------------------
+#+ Tokenization and frequency extraction, ----------------------------------------------------------------------
 unigram.tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
 bigram.tokenizer  <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
 trigram.tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
@@ -228,36 +237,62 @@ unigrams <- DocumentTermMatrix(corpora.tmCorpus, control = list(tokenize = unigr
 bigrams  <- DocumentTermMatrix(corpora.tmCorpus, control = list(tokenize = bigram.tokenizer))
 trigrams <- DocumentTermMatrix(corpora.tmCorpus, control = list(tokenize = trigram.tokenizer))
 
-unigrams.frequency <- sort(colSums(as.matrix(unigrams)),decreasing = TRUE)[1:30]
-bigrams.frequency  <- sort(colSums(as.matrix(bigrams)),decreasing = TRUE)[1:30]
-trigrams.frequency <- sort(colSums(as.matrix(trigrams)),decreasing = TRUE)[1:30]
+unigrams.frequency <- sort(colSums(as.matrix(unigrams)),decreasing = TRUE)#[1:30]
+bigrams.frequency  <- sort(colSums(as.matrix(bigrams)),decreasing = TRUE)#[1:30]
+trigrams.frequency <- sort(colSums(as.matrix(trigrams)),decreasing = TRUE)#[1:30]
 
 unigrams.frequency.df <- data.frame(word = names(unigrams.frequency), frequency = unigrams.frequency)
 bigrams.frequency.df  <- data.frame(word = names(bigrams.frequency), frequency = bigrams.frequency)
 trigrams.frequency.df <- data.frame(word = names(trigrams.frequency), frequency = trigrams.frequency)
 
-#' ## Plotting n-grams
+#+ Frequency analysis,  ----------------------------------------------------------------------
+#' Check out the frequency of frequencies:
+#' Next, the resulting output is two rows of numbers. The top number is the frequency
+#' with which words appear and the bottom number reflects how many words appear
+#' that frequently.
+head(table(unigrams.frequency),20)
+tail(table(unigrams.frequency),20)
+#' For a less, fine-grained look at term frequency
+head (unigrams.frequency,20)
+#' An alternate view of term frequency: this will identify all terms that appear frequently
+head(unigrams.frequency,20)
+#' Yet another way to do this:
+head(unigrams.frequency.df,20)
+
+head(table(bigrams.frequency),20)
+tail(table(bigrams.frequency),20)
+head (bigrams.frequency,20)
+head(bigrams.frequency,20)
+head(bigrams.frequency.df,20)
+
+head(table(trigrams.frequency),20)
+tail(table(trigrams.frequency),20)
+head (trigrams.frequency,20)
+head(trigrams.frequency,20)
+head(trigrams.frequency.df,20)
+
+#' ### Plotting n-grams
 #' 
 #+ r Plotting n-grams, ----------------------------------------------------------------------
-ggplot(unigrams.frequency.df, aes(reorder(word,frequency), frequency)) + 
+ggplot(unigrams.frequency.df[1:30,], aes(reorder(word,frequency), frequency)) + 
         geom_bar(stat = "identity") + 
         xlab("Unigrams") + 
         ylab("Frequency") +
         coord_flip()
 
-ggplot(bigrams.frequency.df, aes(reorder(word,frequency), frequency)) + 
+ggplot(bigrams.frequency.df[1:30,], aes(reorder(word,frequency), frequency)) + 
         geom_bar(stat = "identity") + 
         xlab("Bigrams") + 
         ylab("Frequency") +
         coord_flip()
 
-ggplot(trigrams.frequency.df, aes(reorder(word,frequency), frequency)) + 
+ggplot(trigrams.frequency.df[1:30,], aes(reorder(word,frequency), frequency)) + 
         geom_bar(stat = "identity") + 
         xlab("Trigrams") + 
         ylab("Frequency") +
         coord_flip()
 
-#' ## Word cloud
+#' ### Word cloud
 #' A more human way of frequencies observation is through word clouds. The wordcloud package is user to plot n-grams in a cloudy way
 
 #+ Word cloud, warning = FALSE, ----------------------------------------------------------------------
